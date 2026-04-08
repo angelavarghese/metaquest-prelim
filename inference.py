@@ -23,6 +23,9 @@ from typing import Any
 import requests
 from openai import OpenAI
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -68,13 +71,26 @@ Your job is to process job applications by taking one action per turn. You must 
 4. Ask a candidate a clarifying question:
 {"action_type": "request_info", "candidate_id": "<id>", "question": "<your question>"}
 
-## Rules
-- Always make a decision (accept/reject/shortlist) before composing an email for that candidate.
-- After composing an email, call send_email to deliver it.
-- Every candidate that receives a decision must also receive a notification email (compose + send).
-- In emails: always include the candidate's name, the role name, a clear accept/reject statement, and next steps or personalised feedback. Never leave placeholder text like [NAME] or [ROLE].
+## Strict workflow per candidate (follow in order)
+Step A: decision — accept or reject the candidate.
+Step B: compose_email — write their notification email.
+Step C: send_email — deliver it.
+Only move to the next candidate after completing A→B→C for the current one.
+
+## Decision rules
+- Use "accept" or "reject" for every candidate. "shortlist" is only valid when the task description explicitly asks you to build a shortlist — otherwise never use it.
+- Each candidate_id must receive exactly ONE decision. Never repeat a decision for the same candidate_id.
+- Check "pending_decisions" in the observation — only decide for candidates listed there.
+- If "pending_decisions" is empty, skip straight to composing emails for any candidates not yet emailed.
+
+## Email rules
+- Always include: candidate's name, the role name, a clear accept/reject statement, next steps (if accepted) or personalised feedback (if rejected).
+- Never leave placeholder text like [NAME] or [ROLE] in the email body.
 - Respect salary band constraints when handling negotiation threads.
-- Work efficiently — unnecessary steps are penalised.
+
+## Efficiency
+- Work through candidates one at a time: decide → compose → send, then move to the next.
+- Unnecessary or repeated actions waste your step budget and reduce your score.
 
 ## Objective
 Maximise your episode score by making correct decisions, sending high-quality emails, and delivering all notifications within the step budget.
@@ -121,6 +137,10 @@ def build_user_prompt(obs: dict, step: int, last_reward: float | None, history: 
     lines.append(f"Step: {step}")
     if last_reward is not None:
         lines.append(f"Last step reward: {last_reward:.4f}")
+    
+    if "last_action_result" in obs:
+        lines.append(f"Last action result: {obs['last_action_result']}")
+        
     lines.append(f"Pending decisions: {obs.get('pending_decisions', [])}")
 
     apps = obs.get("applications", [])
@@ -151,14 +171,13 @@ def call_llm(messages: list[dict]) -> str:
 
 def parse_action(raw: str) -> dict:
     """Parse LLM output to a JSON action dict. Falls back to request_info on failure."""
-    # Strip markdown fences if present
-    text = raw.strip()
-    if text.startswith("```"):
-        lines = text.splitlines()
-        text = "\n".join(
-            line for line in lines
-            if not line.strip().startswith("```")
-        ).strip()
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end != -1:
+        text = raw[start:end+1]
+    else:
+        text = raw
+        
     try:
         return json.loads(text)
     except json.JSONDecodeError:
@@ -203,7 +222,9 @@ def run_task(task_name: str) -> dict:
 
             # Call LLM
             raw = call_llm(messages)
+            print(f"[DEBUG] raw={raw}", file=sys.stderr)
             action = parse_action(raw)
+            print(f"[DEBUG] action={action}", file=sys.stderr)
 
             # Step environment
             result = env_step(action)
@@ -211,13 +232,18 @@ def run_task(task_name: str) -> dict:
             step_reward = result.get("reward", 0.0)
             done = result.get("done", False)
             cumulative_reward += step_reward
-            final_reward = step_reward  # env returns episode score when done, step reward otherwise
+            final_reward = step_reward  # updated to final score below if done
+
+            # When done, get the final score from the breakdown
+            if done:
+                breakdown = result.get("info", {}).get("final_reward_breakdown", {})
+                final_reward = breakdown.get("total", cumulative_reward)
 
             emit("STEP", {
                 "task": task_name,
                 "step": step,
                 "action_type": action.get("action_type", "unknown"),
-                "reward": round(step_reward, 4),
+                "reward": round(final_reward, 4) if done else round(step_reward, 4),
                 "done": done,
             })
 
@@ -228,8 +254,6 @@ def run_task(task_name: str) -> dict:
             step += 1
 
             if done:
-                # Final score is in the result when done=True
-                final_reward = result.get("score", result.get("reward", cumulative_reward))
                 break
 
     except Exception as exc:

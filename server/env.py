@@ -162,6 +162,18 @@ class JobApplicationEnv:
         if cid not in valid_ids:
             return f"ERROR: Unknown candidate_id '{cid}'", 0.0
 
+        # FIX 1 & 3: reject duplicate decisions and tell the agent to move on
+        if cid in state.decisions:
+            already = state.decisions[cid].value
+            return (
+                f"WARN: Decision for {cid} already recorded as '{already}'. "
+                f"Do NOT decide for {cid} again. "
+                f"Remaining candidates needing decisions: "
+                f"{[c for c in task.ground_truth_decisions if c not in state.decisions]}. "
+                f"If all decisions are made, compose and send emails.",
+                0.0,
+            )
+
         state.decisions[cid] = action.decision
 
         sim = task.simulated_replies.get(cid, {})
@@ -173,7 +185,9 @@ class JobApplicationEnv:
             self._inject_simulated_reply(cid, sim)
 
         return (
-            f"Decision recorded: {action.decision.value} for {cid} ({action.reason})",
+            f"Decision recorded: {action.decision.value} for {cid} ({action.reason}). "
+            f"Remaining candidates needing decisions: "
+            f"{[c for c in task.ground_truth_decisions if c not in state.decisions]}.",
             0.0,
         )
 
