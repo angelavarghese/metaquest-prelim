@@ -1,0 +1,151 @@
+{
+  "task_name": "batch_with_quota",
+  "difficulty": "medium",
+  "role_description": "Mid-level Backend Engineer at Nexus Tech. Required: 3+ years experience, proficiency in Go or Rust, must hold a current cloud certification (AWS, GCP, or Azure). Only 2 open seats. Salary band: $110,000–$140,000. Candidates should be ranked and personalised rejection reasons provided to all rejected applicants.",
+  "max_steps": 16,
+  "salary_band": { "min": 110000, "max": 140000 },
+  "expected_min_score": 0.55,
+
+  "applications": [
+    {
+      "candidate_id": "C001",
+      "name": "Marcus Rivera",
+      "email": "marcus.rivera@email.com",
+      "years_experience": 4,
+      "skills": ["Go", "Kubernetes", "PostgreSQL", "gRPC"],
+      "certifications": ["GCP Professional Cloud Developer"],
+      "current_salary": 108000,
+      "expected_salary": 125000,
+      "cover_letter": "Four years building distributed systems in Go at a fintech startup. GCP certified. Looking to join a product-focused team.",
+      "notes": ""
+    },
+    {
+      "candidate_id": "C002",
+      "name": "Aisha Okonkwo",
+      "email": "aisha.okonkwo@email.com",
+      "years_experience": 6,
+      "skills": ["Rust", "C++", "Systems programming", "Linux kernel"],
+      "certifications": ["AWS Solutions Architect Professional"],
+      "current_salary": 155000,
+      "expected_salary": 170000,
+      "cover_letter": "Senior systems engineer specialising in Rust. My current TC is above your stated band but I am open to discussing.",
+      "notes": "Overqualified — expected salary significantly above band ceiling."
+    },
+    {
+      "candidate_id": "C003",
+      "name": "Sam Chen",
+      "email": "sam.chen@email.com",
+      "years_experience": 3,
+      "skills": ["Go", "Docker", "REST APIs", "MySQL"],
+      "certifications": [],
+      "current_salary": 95000,
+      "expected_salary": 115000,
+      "cover_letter": "Three years of Go experience. I am studying for my AWS cert and expect to have it within two months.",
+      "notes": "Missing required cloud certification — fails hard requirement."
+    },
+    {
+      "candidate_id": "C004",
+      "name": "Jordan Lee",
+      "email": "jordan.lee@email.com",
+      "years_experience": 5,
+      "skills": ["Rust", "WebAssembly", "Go", "Redis"],
+      "certifications": ["Azure Developer Associate"],
+      "current_salary": 118000,
+      "expected_salary": 132000,
+      "cover_letter": "Full-stack backend engineer with strong Rust and some Go. Azure certified. Excited about Nexus Tech's infrastructure work.",
+      "notes": ""
+    },
+    {
+      "candidate_id": "C005",
+      "name": "Fatima Al-Hassan",
+      "email": "fatima.alhassan@email.com",
+      "years_experience": 2,
+      "skills": ["Go", "Python", "REST APIs"],
+      "certifications": ["AWS Cloud Practitioner"],
+      "current_salary": 78000,
+      "expected_salary": 110000,
+      "cover_letter": "Two years in Go. I hold an AWS Cloud Practitioner cert and am eager to grow.",
+      "notes": "Under-experienced — 2 years vs required 3. Cloud Practitioner is a foundational cert, not professional-level."
+    },
+    {
+      "candidate_id": "C006",
+      "name": "Tomasz Wierzbicki",
+      "email": "tomasz.w@email.com",
+      "years_experience": 4,
+      "skills": ["Go", "Rust", "Kafka", "Elasticsearch"],
+      "certifications": ["GCP Associate Cloud Engineer"],
+      "current_salary": 112000,
+      "expected_salary": 128000,
+      "cover_letter": "Backend engineer with 4 years in Go and Rust. GCP certified. Worked heavily with event-driven architectures.",
+      "notes": ""
+    },
+    {
+      "candidate_id": "C007",
+      "name": "Preethi Nair",
+      "email": "preethi.nair@email.com",
+      "years_experience": 3,
+      "skills": ["Rust", "Go", "gRPC", "Prometheus"],
+      "certifications": ["AWS Developer Associate"],
+      "current_salary": 102000,
+      "expected_salary": 118000,
+      "cover_letter": "Rust-first engineer, 3 years experience. AWS certified. Interested in building reliable distributed systems.",
+      "notes": ""
+    },
+    {
+      "candidate_id": "C008",
+      "name": "Devon Harper",
+      "email": "devon.harper@email.com",
+      "years_experience": 1,
+      "skills": ["Go"],
+      "certifications": [],
+      "current_salary": 65000,
+      "expected_salary": 95000,
+      "cover_letter": "Junior dev with 1 year Go experience. Keen learner.",
+      "notes": "Fails on experience (1 year) and missing certification — clear reject."
+    }
+  ],
+
+  "ground_truth_decisions": {
+    "C001": "accept",
+    "C002": "reject",
+    "C003": "reject",
+    "C004": "accept",
+    "C005": "reject",
+    "C006": "shortlist",
+    "C007": "shortlist",
+    "C008": "reject"
+  },
+
+  "_ground_truth_notes": {
+    "C001": "Meets all criteria, in-band salary, strong skills.",
+    "C002": "Overqualified, expected salary far above band maximum.",
+    "C003": "Missing required cloud certification — hard disqualifier.",
+    "C004": "Meets all criteria, in-band salary, diverse Rust+Go background.",
+    "C005": "Only 2 years experience (requires 3); foundational cert not sufficient.",
+    "C006": "Strong but only 2 seats filled. Shortlist as backup.",
+    "C007": "Strong candidate; shortlist as second backup.",
+    "C008": "1 year experience, no cert — clear reject."
+  },
+
+  "required_email_fields": {
+    "C001": ["name", "role", "accept_language", "next_steps"],
+    "C002": ["name", "role", "reject_language", "personalised_reason"],
+    "C003": ["name", "role", "reject_language", "personalised_reason"],
+    "C004": ["name", "role", "accept_language", "next_steps"],
+    "C005": ["name", "role", "reject_language", "personalised_reason"],
+    "C006": ["name", "role", "shortlist_language"],
+    "C007": ["name", "role", "shortlist_language"],
+    "C008": ["name", "role", "reject_language", "personalised_reason"]
+  },
+
+  "scoring_rubric": {
+    "decision_weight": 0.60,
+    "email_quality_weight": 0.25,
+    "delivery_weight": 0.10,
+    "efficiency_weight": 0.05,
+    "efficiency_threshold": 0.80,
+    "intermediate_compose_reward": 0.05
+  },
+
+  "simulated_replies": {}
+}

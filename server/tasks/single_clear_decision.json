@@ -1,0 +1,49 @@
+{
+  "task_name": "single_clear_decision",
+  "difficulty": "easy",
+  "role_description": "Junior Software Engineer at Acme Corp. Required: 4+ years of experience, proficiency in Python and SQL. Salary band: $80,000–$100,000. Start date: immediate. One open seat.",
+  "max_steps": 4,
+  "salary_band": { "min": 80000, "max": 100000 },
+  "expected_min_score": 0.85,
+
+  "applications": [
+    {
+      "candidate_id": "C001",
+      "name": "Priya Sharma",
+      "email": "priya.sharma@email.com",
+      "years_experience": 5,
+      "skills": ["Python", "SQL", "Django", "REST APIs"],
+      "certifications": ["AWS Certified Developer"],
+      "current_salary": 82000,
+      "expected_salary": 92000,
+      "cover_letter": "I have five years of experience building scalable web services in Python and SQL. I am excited about the Junior SWE role at Acme Corp and believe my background in REST API design makes me a strong fit.",
+      "notes": ""
+    }
+  ],
+
+  "ground_truth_decisions": {
+    "C001": "accept"
+  },
+
+  "required_email_fields": {
+    "C001": ["name", "role", "accept_language", "next_steps"]
+  },
+
+  "scoring_rubric": {
+    "decision_weight": 0.60,
+    "email_quality_weight": 0.25,
+    "delivery_weight": 0.10,
+    "efficiency_weight": 0.05,
+    "efficiency_threshold": 0.80,
+    "intermediate_compose_reward": 0.05
+  },
+
+  "simulated_replies": {},
+
+  "reference_emails": {
+    "C001": {
+      "subject": "Your Application for Junior Software Engineer at Acme Corp",
+      "body": "Dear Priya,\n\nThank you for applying for the Junior Software Engineer role at Acme Corp. We are pleased to inform you that we would like to move forward with your application.\n\nYour five years of experience with Python and SQL, along with your AWS certification, make you an excellent fit for the team.\n\nAs a next step, our recruitment team will reach out within two business days to schedule a technical interview. Please let us know if you have any questions in the meantime.\n\nBest regards,\nAcme Corp Recruitment"
+    }
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "task_name": "negotiation_and_edge_cases",
+  "difficulty": "hard",
+  "role_description": "Senior Product Manager at Orbital Systems. Required: 5+ years PM experience, B2B SaaS background, demonstrated cross-functional leadership. Salary band: $150,000–$185,000 (FIRM — no exceptions approved). One open seat. Candidate communications must be professional and consistent with policy. Counter-offers above band must be declined with empathy but firmness. Reapplication requests should receive structured feedback per the hiring policy template.",
+  "max_steps": 20,
+  "salary_band": { "min": 150000, "max": 185000 },
+  "expected_min_score": 0.25,
+
+  "applications": [
+    {
+      "candidate_id": "C001",
+      "name": "Leila Amir",
+      "email": "leila.amir@email.com",
+      "years_experience": 7,
+      "skills": ["Product strategy", "B2B SaaS", "OKRs", "roadmap planning", "Agile"],
+      "certifications": ["PMP"],
+      "current_salary": 165000,
+      "expected_salary": 180000,
+      "cover_letter": "Seven years leading product at enterprise SaaS companies. Led 0-to-1 product launch that grew ARR by $12M. Deeply interested in Orbital's mission.",
+      "notes": "Best candidate. Will counter-offer at $192,000 if accepted — above band. Agent must decline the counter firmly but empathetically."
+    },
+    {
+      "candidate_id": "C002",
+      "name": "Ben Okafor",
+      "email": "ben.okafor@email.com",
+      "years_experience": 5,
+      "skills": ["Product management", "B2B SaaS", "customer discovery", "SQL"],
+      "certifications": [],
+      "current_salary": 148000,
+      "expected_salary": 160000,
+      "cover_letter": "Five years PM at two B2B SaaS companies. Strong in customer discovery and data-driven prioritisation. Excited about the Senior PM role.",
+      "notes": "Solid candidate. Will send a reapplication / appeal after rejection, asking for specific feedback. Agent must provide structured, policy-compliant feedback."
+    },
+    {
+      "candidate_id": "C003",
+      "name": "Ingrid Solberg",
+      "email": "ingrid.solberg@email.com",
+      "years_experience": 8,
+      "skills": ["Product management", "hardware", "consumer electronics"],
+      "certifications": [],
+      "current_salary": 172000,
+      "expected_salary": 175000,
+      "cover_letter": "Eight years PM experience but primarily in consumer hardware. Interested in pivoting to SaaS.",
+      "notes": "Reject — no B2B SaaS background despite experience level."
+    },
+    {
+      "candidate_id": "C004",
+      "name": "Rafael Moreno",
+      "email": "rafael.moreno@email.com",
+      "years_experience": 3,
+      "skills": ["Product management", "B2B SaaS", "user research"],
+      "certifications": [],
+      "current_salary": 120000,
+      "expected_salary": 145000,
+      "cover_letter": "Three years as PM in B2B SaaS. Strong on user research. Looking to grow into a senior role.",
+      "notes": "Reject — under-experienced for Senior PM (3 years vs required 5)."
+    },
+    {
+      "candidate_id": "C005",
+      "name": "Yuki Tanaka",
+      "email": "yuki.tanaka@email.com",
+      "years_experience": 6,
+      "skills": ["Product management", "B2B SaaS", "enterprise sales alignment", "data analysis"],
+      "certifications": ["CSPO"],
+      "current_salary": 158000,
+      "expected_salary": 170000,
+      "cover_letter": "Six years PM at enterprise B2B companies. Deep experience aligning product and sales for enterprise deals.",
+      "notes": "Strong second candidate but only one seat. Reject with quality feedback."
+    }
+  ],
+
+  "ground_truth_decisions": {
+    "C001": "accept",
+    "C002": "reject",
+    "C003": "reject",
+    "C004": "reject",
+    "C005": "reject"
+  },
+
+  "_ground_truth_notes": {
+    "C001": "Best fit on all dimensions. Counter-offer must be declined within band policy.",
+    "C002": "Solid but C001 is strictly better. Reapplication reply must include structured feedback.",
+    "C003": "No B2B SaaS — hard disqualifier for this role.",
+    "C004": "Under-experienced for Senior PM.",
+    "C005": "Strong candidate, but only one seat and C001 wins on criteria."
+  },
+
+  "required_email_fields": {
+    "C001": ["name", "role", "accept_language", "next_steps"],
+    "C002": ["name", "role", "reject_language", "personalised_reason"],
+    "C003": ["name", "role", "reject_language", "personalised_reason"],
+    "C004": ["name", "role", "reject_language", "personalised_reason"],
+    "C005": ["name", "role", "reject_language", "personalised_reason"]
+  },
+
+  "scoring_rubric": {
+    "decision_weight": 0.60,
+    "email_quality_weight": 0.25,
+    "delivery_weight": 0.10,
+    "efficiency_weight": 0.05,
+    "efficiency_threshold": 0.80,
+    "intermediate_compose_reward": 0.05
+  },
+
+  "simulated_replies": {
+    "C001": {
+      "trigger_action": "decision",
+      "trigger_decision": "accept",
+      "reply_subject": "Re: Your Application for Senior Product Manager at Orbital Systems",
+      "reply_body": "Thank you so much for the offer! I am very excited about this opportunity. However, given my current compensation and competing offers, I would need a base salary of $192,000 to make the move. Is there any flexibility on the band? I hope we can make this work.",
+      "reply_type": "counter_offer",
+      "counter_offer_amount": 192000
+    },
+    "C002": {
+      "trigger_action": "send_email",
+      "trigger_decision": "reject",
+      "reply_subject": "Re: Your Application for Senior Product Manager at Orbital Systems",
+      "reply_body": "Thank you for letting me know. I was quite excited about this role and would love to understand more about why I was not selected. Could you share specific feedback on my application? I am committed to improving and would like to know if it would be appropriate to reapply in the future.",
+      "reply_type": "reapplication_request"
+    }
+  },
+
+  "policy_constraints": {
+    "salary_band_firm": true,
+    "max_counter_offer_response": "We appreciate your interest and understand your position. Unfortunately, our salary band for this role is firm at $150,000–$185,000 and we are unable to make exceptions. We hope you will consider the full compensation package and the opportunity to work on Orbital's mission.",
+    "reapplication_feedback_template": "Thank you for your interest in reapplying. Here is our structured feedback: [STRENGTH], however [GAP]. We would encourage you to reapply when [CONDITION]. We wish you the best in your search."
+  }
+}
