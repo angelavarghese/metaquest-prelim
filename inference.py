@@ -32,6 +32,10 @@ MODEL_NAME: str = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN: str | None = os.environ.get("HF_TOKEN")  # intentionally no default
 
 OPENAI_BASE_URL: str = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+REQUEST_TIMEOUT_SEC: int = int(os.environ.get("REQUEST_TIMEOUT_SEC", "25"))
+LLM_TIMEOUT_SEC: int = int(os.environ.get("LLM_TIMEOUT_SEC", "40"))
+# Hard stop below 20 minutes to satisfy submission runtime constraints.
+MAX_TOTAL_RUNTIME_SEC: int = int(os.environ.get("MAX_TOTAL_RUNTIME_SEC", "1140"))
 
 TASKS = ["single_clear_decision", "batch_with_quota", "negotiation_and_edge_cases"]
 
@@ -85,19 +89,23 @@ Maximise your episode score by making correct decisions, sending high-quality em
 # ---------------------------------------------------------------------------
 
 def env_reset(task: str) -> dict:
-    r = requests.post(f"{API_BASE_URL}/reset", json={"task": task}, timeout=30)
+    r = requests.post(
+        f"{API_BASE_URL}/reset",
+        json={"task": task},
+        timeout=REQUEST_TIMEOUT_SEC,
+    )
     r.raise_for_status()
     return r.json()
 
 
 def env_step(action: dict) -> dict:
-    r = requests.post(f"{API_BASE_URL}/step", json=action, timeout=30)
+    r = requests.post(f"{API_BASE_URL}/step", json=action, timeout=REQUEST_TIMEOUT_SEC)
     r.raise_for_status()
     return r.json()
 
 
 def env_state() -> dict:
-    r = requests.get(f"{API_BASE_URL}/state", timeout=30)
+    r = requests.get(f"{API_BASE_URL}/state", timeout=REQUEST_TIMEOUT_SEC)
     r.raise_for_status()
     return r.json()
 
@@ -143,8 +151,9 @@ def call_llm(messages: list[dict]) -> str:
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=messages,
-        max_tokens=1000,
+        max_tokens=700,
         temperature=0.2,
+        timeout=LLM_TIMEOUT_SEC,
     )
     return response.choices[0].message.content.strip()
 
@@ -182,7 +191,7 @@ def emit(tag: str, payload: dict) -> None:
 # Single-task episode runner
 # ---------------------------------------------------------------------------
 
-def run_task(task_name: str) -> dict:
+def run_task(task_name: str, deadline_ts: float) -> dict:
     emit("START", {"task": task_name, "model": MODEL_NAME})
 
     obs = env_reset(task_name)
@@ -194,6 +203,11 @@ def run_task(task_name: str) -> dict:
 
     try:
         while True:
+            if time.time() >= deadline_ts:
+                raise TimeoutError(
+                    f"Global runtime limit reached ({MAX_TOTAL_RUNTIME_SEC}s)."
+                )
+
             # Build prompt
             user_prompt = build_user_prompt(obs, step, last_reward, obs_history[-CONTEXT_WINDOW:])
             messages = [
@@ -266,9 +280,14 @@ def main():
         )
 
     results = []
+    start_ts = time.time()
+    deadline_ts = start_ts + MAX_TOTAL_RUNTIME_SEC
+
     for task in TASKS:
-        result = run_task(task)
+        result = run_task(task, deadline_ts)
         results.append(result)
+        if time.time() >= deadline_ts:
+            break
         time.sleep(1)  # brief pause between tasks
 
     # Summary to stderr (not stdout, so it doesn't interfere with log parsing)
