@@ -1,3 +1,4 @@
 pydantic>=2.0
 pytest>=7.0
-openenv-core
+openenv-core>=0.2.0
+python-dotenv>=1.0.0
