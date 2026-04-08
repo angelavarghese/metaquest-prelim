@@ -4,6 +4,11 @@ Run with: pytest tests/test_env.py -v
 """
 
 import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import pytest
 from server.models import (
     ComposeEmailAction,
@@ -42,6 +47,12 @@ def compose_action(cid: str, recipient: str, subject: str, body: str) -> Compose
 
 def send_action(cid: str, thread_id: str) -> SendEmailAction:
     return SendEmailAction(candidate_id=cid, thread_id=thread_id)
+
+
+def extract_thread_id(message: str) -> str:
+    match = re.search(r"thread_id=(thread_[A-Za-z0-9]+)", message)
+    assert match is not None, f"Could not find thread_id in message: {message!r}"
+    return match.group(1)
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +175,7 @@ class TestDoneConditions:
         )
         # Extract thread_id from last_action_result
         msg = r.observation.last_action_result or ""
-        thread_id = [w for w in msg.split() if w.startswith("thread_")][0].rstrip(")")
+        thread_id = extract_thread_id(msg)
         result = env.step(send_action("C001", thread_id))
         return result
 
@@ -271,7 +282,7 @@ class TestSimulatedReplies:
             )
         )
         msg = r.observation.last_action_result or ""
-        thread_id = [w for w in msg.split() if w.startswith("thread_")][0].rstrip(")")
+        thread_id = extract_thread_id(msg)
         env.step(send_action("C002", thread_id))
 
         s = env.state()
@@ -299,7 +310,7 @@ class TestManualWalkthrough:
             )
         )
         msg = r.observation.last_action_result or ""
-        thread_id = [w for w in msg.split() if w.startswith("thread_")][0].rstrip(")")
+        thread_id = extract_thread_id(msg)
         result = env.step(send_action("C001", thread_id))
         assert result.done
         return result
@@ -342,7 +353,7 @@ class TestManualWalkthrough:
                 body = f"Dear {name}, unfortunately we will not be moving forward. The role requires specific certifications that were not present. We wish you the best."
             r = env.step(compose_action(cid, email, "Your Application — Nexus Tech", body))
             msg = r.observation.last_action_result or ""
-            tid = [w for w in msg.split() if w.startswith("thread_")][0].rstrip(")")
+            tid = extract_thread_id(msg)
             thread_ids[cid] = tid
 
         result = None
@@ -390,7 +401,7 @@ class TestManualWalkthrough:
                 body = f"Dear {name}, unfortunately we will not be moving forward with your application. The role requires extensive B2B SaaS leadership. We wish you the best."
             r = env.step(compose_action(cid, email, "Senior PM Role — Orbital Systems", body))
             msg = r.observation.last_action_result or ""
-            tid = [w for w in msg.split() if w.startswith("thread_")][0].rstrip(")")
+            tid = extract_thread_id(msg)
             thread_ids[cid] = tid
 
         result = None

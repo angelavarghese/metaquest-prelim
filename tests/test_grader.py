@@ -3,8 +3,12 @@ Tests for grader.py — M03
 Run with: pytest tests/test_grader.py -v
 """
 
-import pytest
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import pytest
 from server.models import DecisionType, EpisodeState, TaskConfig
 from server.grader import grade_episode, _check_email_quality
 

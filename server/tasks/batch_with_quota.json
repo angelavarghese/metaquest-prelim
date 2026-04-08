@@ -2,7 +2,7 @@
   "task_name": "batch_with_quota",
   "difficulty": "medium",
   "role_description": "Mid-level Backend Engineer at Nexus Tech. Required: 3+ years experience, proficiency in Go or Rust, must hold a current cloud certification (AWS, GCP, or Azure). Only 2 open seats. Salary band: $110,000–$140,000. Candidates should be ranked and personalised rejection reasons provided to all rejected applicants.",
-  "max_steps": 16,
+  "max_steps": 24,
   "salary_band": { "min": 110000, "max": 140000 },
   "expected_min_score": 0.55,
 
