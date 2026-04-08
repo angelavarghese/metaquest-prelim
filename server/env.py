@@ -207,14 +207,22 @@ class JobApplicationEnv:
         state = self._episode_state
         task = self._task_config
 
-        if action.thread_id not in state.composed_emails:
-            return f"ERROR: thread_id '{action.thread_id}' not found. Compose email first.", 0.0
+        thread_id = action.thread_id
+        if not thread_id:
+            # Fallback for backwards compat with tests that omit thread_id
+            for tid, email_data in reversed(list(state.composed_emails.items())):
+                if email_data.get("candidate_id") == action.candidate_id:
+                    thread_id = tid
+                    break
 
-        if action.thread_id in state.sent_email_ids:
-            return f"WARN: thread_id '{action.thread_id}' already sent.", 0.0
+        if not thread_id or thread_id not in state.composed_emails:
+            return f"ERROR: thread_id '{thread_id}' not found. Compose email first.", 0.0
 
-        state.sent_email_ids.append(action.thread_id)
-        email_data = state.composed_emails[action.thread_id]
+        if thread_id in state.sent_email_ids:
+            return f"WARN: thread_id '{thread_id}' already sent.", 0.0
+
+        state.sent_email_ids.append(thread_id)
+        email_data = state.composed_emails[thread_id]
         cid = email_data.get("candidate_id", "")
 
         sent_msg = EmailMessage(
@@ -225,7 +233,7 @@ class JobApplicationEnv:
             timestamp=_simulated_clock(state.step),
         )
         thread = EmailThread(
-            thread_id=action.thread_id,
+            thread_id=thread_id,
             candidate_id=cid,
             messages=[sent_msg],
         )
@@ -239,7 +247,7 @@ class JobApplicationEnv:
         ):
             self._inject_simulated_reply(cid, sim)
 
-        return f"Email sent for candidate {cid} (thread_id={action.thread_id})", 0.0
+        return f"Email sent for candidate {cid} (thread_id={thread_id})", 0.0
 
     def _handle_request_info(self, action: RequestInfoAction) -> tuple[str, float]:
         state = self._episode_state

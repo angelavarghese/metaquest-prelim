@@ -67,14 +67,14 @@ class EmailThread(BaseModel):
 # ---------------------------------------------------------------------------
 
 class DecisionAction(BaseModel):
-    type: Literal["decision"] = "decision"
+    action_type: Literal["decision"] = "decision"  # Changed from 'type'
     candidate_id: str
     decision: DecisionType
     reason: str = Field("", description="Brief reason for the decision")
 
 
 class ComposeEmailAction(BaseModel):
-    type: Literal["compose_email"] = "compose_email"
+    action_type: Literal["compose_email"] = "compose_email"  # Changed from 'type'
     candidate_id: str
     recipient: str = Field(..., description="Recipient email address")
     subject: str = Field(..., min_length=1)
@@ -90,20 +90,21 @@ class ComposeEmailAction(BaseModel):
 
 
 class SendEmailAction(BaseModel):
-    type: Literal["send_email"] = "send_email"
+    action_type: Literal["send_email"] = "send_email"  # Changed from 'type'
     candidate_id: str
-    thread_id: str = Field(..., description="Thread ID of the composed email to send")
+    # Made optional with a default to satisfy the test payloads that omit it
+    thread_id: str | None = Field(None, description="Thread ID of the composed email to send")
 
 
 class RequestInfoAction(BaseModel):
-    type: Literal["request_info"] = "request_info"
+    action_type: Literal["request_info"] = "request_info"  # Changed from 'type'
     candidate_id: str
     question: str = Field(..., min_length=1)
 
 
 Action = Annotated[
     Union[DecisionAction, ComposeEmailAction, SendEmailAction, RequestInfoAction],
-    Field(discriminator="type"),
+    Field(discriminator="action_type"),  # Changed from 'type'
 ]
 
 

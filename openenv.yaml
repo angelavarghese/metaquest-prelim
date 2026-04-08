@@ -1,0 +1,139 @@
+name: job-application-env
+version: "1.0.0"
+description: >
+  A benchmark environment for evaluating AI agents on real-world recruitment workflows.
+  Agents read job applications, make accept/reject/shortlist decisions, compose personalised
+  emails, send notifications, and handle follow-up threads (salary negotiation, reapplications).
+  Scoring is fully deterministic — no LLM judge required.
+
+tasks:
+  - name: single_clear_decision
+    description: "1 applicant for a junior SWE role. Candidate meets all criteria unambiguously. Ground truth: accept + send one email."
+    difficulty: easy
+    max_steps: 4
+    expected_score: 0.85
+
+  - name: batch_with_quota
+    description: "8 applicants, only 2 open slots. Mixed signals — overlapping skill sets, one overqualified, one missing a required cert. Agent must rank, reject 6 with personalised reasons, accept 2 with next-steps."
+    difficulty: medium
+    max_steps: 16
+    expected_score: 0.55
+
+  - name: negotiation_and_edge_cases
+    description: "5 applicants. One accepted candidate replies with a counter-offer salary negotiation. One rejection triggers a reapplication asking for feedback. Agent must handle follow-up threads and stay within salary-band policy."
+    difficulty: hard
+    max_steps: 20
+    expected_score: 0.25
+
+observation_space:
+  type: object
+  properties:
+    applications:
+      type: array
+      description: "List of ApplicationRecord objects visible to the agent."
+      items:
+        type: object
+        properties:
+          candidate_id:   { type: string }
+          name:           { type: string }
+          email:          { type: string }
+          years_exp:      { type: integer }
+          skills:         { type: array, items: { type: string } }
+          certifications: { type: array, items: { type: string } }
+          cover_letter:   { type: string }
+          status:
+            type: string
+            enum: [pending, accepted, rejected, shortlisted]
+    inbox:
+      type: array
+      description: "Email threads the agent can read and reply to."
+      items:
+        type: object
+        properties:
+          thread_id:    { type: string }
+          candidate_id: { type: string }
+          messages:
+            type: array
+            items:
+              type: object
+              properties:
+                sender:    { type: string }
+                body:      { type: string }
+                timestamp: { type: string }
+    pending_decisions:
+      type: array
+      description: "Candidate IDs that still require a decision."
+      items: { type: string }
+    step:
+      type: integer
+      description: "Current step number within the episode."
+    last_action_result:
+      type: ["string", "null"]
+      description: "Human-readable result of the previous action, or null on the first step."
+    task_description:
+      type: string
+      description: "Full task description including role details and constraints."
+
+action_space:
+  type: object
+  description: "Discriminated union — set `action_type` to one of the four values below."
+  oneOf:
+    - title: decision
+      properties:
+        action_type:  { type: string, enum: [decision] }
+        candidate_id: { type: string }
+        decision:     { type: string, enum: [accept, reject, shortlist] }
+        reason:       { type: string, description: "Required justification." }
+      required: [action_type, candidate_id, decision, reason]
+
+    - title: compose_email
+      properties:
+        action_type:  { type: string, enum: [compose_email] }
+        recipient:    { type: string, description: "Candidate email address." }
+        subject:      { type: string }
+        body:         { type: string }
+        candidate_id: { type: string }
+      required: [action_type, recipient, subject, body, candidate_id]
+
+    - title: send_email
+      properties:
+        action_type:  { type: string, enum: [send_email] }
+        candidate_id: { type: string, description: "Candidate whose queued email to send." }
+      required: [action_type, candidate_id]
+
+    - title: request_info
+      properties:
+        action_type:  { type: string, enum: [request_info] }
+        candidate_id: { type: string }
+        question:     { type: string }
+      required: [action_type, candidate_id, question]
+
+reward_range: [0.0, 1.0]
+
+reward_components:
+  decision_score:
+    weight: 0.60
+    description: "Correctness of accept/reject/shortlist decisions vs ground truth."
+  email_quality_score:
+    weight: 0.25
+    description: "Structured field checks: name, role, correct language, next-steps/feedback, no placeholders."
+  delivery_score:
+    weight: 0.10
+    description: "Fraction of required candidate notifications actually sent."
+  efficiency_penalty:
+    weight: 0.05
+    description: "Penalty for using >80% of max_steps. Never makes total negative."
+
+tags:
+  - openenv
+  - recruitment
+  - email
+  - decision-making
+  - real-world
+
+endpoints:
+  reset: POST /reset
+  step:  POST /step
+  state: GET  /state
+  tasks: GET  /tasks
+  health: GET /health
