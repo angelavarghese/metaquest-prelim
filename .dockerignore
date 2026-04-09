@@ -1,0 +1,16 @@
+.git
+.gitignore
+.pytest_cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.venv/
+venv/
+.env
+.env.*
+*.ipynb
+tests/
+implementation_plan.md
+uv.lock
