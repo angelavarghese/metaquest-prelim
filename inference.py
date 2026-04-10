@@ -2,15 +2,19 @@
 inference.py — Baseline agent loop for the Job Application Environment.
 
 Environment variables (all consumed via os.environ):
-  API_BASE_URL   — OpenAI-compatible base URL  (default: http://localhost:8000/v1)
-  MODEL_NAME     — Model to use                (default: gpt-4o-mini)
-  HF_TOKEN       — API key, NO default         (required in HF Space / remote runs)
-  LOCAL_IMAGE_NAME — If set, used for logging only (optional)
+  API_BASE_URL        — OpenAI-compatible base URL  (default: http://localhost:8000/v1)
+  MODEL_NAME          — Model to use                (default: gpt-4o-mini)
+  HF_TOKEN            — API key, NO default         (required in HF Space / remote runs)
+  LOCAL_IMAGE_NAME    — If set, used for logging only (optional)
+  OPENAI_BASE_URL     — Base URL for LLM provider   (default: https://api.openai.com/v1)
+  REQUEST_TIMEOUT_SEC — HTTP timeout for env calls  (default: 25)
+  LLM_TIMEOUT_SEC     — HTTP timeout for LLM calls  (default: 40)
+  MAX_TOTAL_RUNTIME_SEC — Hard stop across all tasks (default: 1140)
 
-Stdout format (exactly one block per task):
-  [START] {"task": ..., "model": ...}
-  [STEP]  {"task": ..., "step": ..., "action_type": ..., "reward": ..., "done": ...}
-  [END]   {"task": ..., "steps": ..., "final_reward": ..., "score": ...}
+Stdout format — EXACTLY one line per event, key=value pairs:
+  [START] task=<name> model=<name>
+  [STEP]  step=<n> action=<action_type>(...) reward=<f> done=<bool> error=null
+  [END]   task=<name> steps=<n> final_reward=<f> score=<f>
 """
 
 import json
@@ -18,7 +22,6 @@ import os
 import sys
 import time
 import traceback
-from typing import Any
 
 import requests
 from openai import OpenAI
@@ -32,7 +35,8 @@ load_dotenv()
 
 API_BASE_URL: str = os.environ.get("API_BASE_URL", "http://localhost:8000")
 MODEL_NAME: str = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN: str | None = os.environ.get("HF_TOKEN")  # intentionally no default
+HF_TOKEN: str | None = os.environ.get("HF_TOKEN")          # intentionally no default
+LOCAL_IMAGE_NAME: str | None = os.environ.get("LOCAL_IMAGE_NAME")  # logging only
 
 OPENAI_BASE_URL: str = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 REQUEST_TIMEOUT_SEC: int = int(os.environ.get("REQUEST_TIMEOUT_SEC", "25"))
@@ -70,7 +74,7 @@ Your job is to process job applications by taking one action per turn. You must 
 {"action_type": "compose_email", "candidate_id": "<id>", "recipient": "<email address>", "subject": "<subject>", "body": "<full email body>"}
 
 3. Send a composed email (must compose first):
-{"action_type": "send_email", "candidate_id": "<id>"}
+{"action_type": "send_email", "candidate_id": "<id>", "thread_id": "<thread_id from compose result>"}
 
 4. Ask a candidate a clarifying question:
 {"action_type": "request_info", "candidate_id": "<id>", "question": "<your question>"}
@@ -78,7 +82,7 @@ Your job is to process job applications by taking one action per turn. You must 
 ## Strict workflow per candidate (follow in order)
 Step A: decision — accept or reject the candidate.
 Step B: compose_email — write their notification email.
-Step C: send_email — deliver it.
+Step C: send_email — deliver it (use the thread_id returned in the last action result).
 Only move to the next candidate after completing A→B→C for the current one.
 
 ## Decision rules
@@ -134,7 +138,7 @@ def build_user_prompt(obs: dict, step: int, last_reward: float | None, history: 
 
     if history:
         lines.append("## Recent observations (last {} steps)".format(len(history)))
-        for i, past_obs in enumerate(history):
+        for past_obs in history:
             lines.append(f"### Step {past_obs.get('step', '?')} observation (summary)")
             lines.append(f"- Pending decisions: {past_obs.get('pending_decisions', [])}")
             lines.append(f"- Inbox threads: {len(past_obs.get('inbox', []))}")
@@ -145,10 +149,10 @@ def build_user_prompt(obs: dict, step: int, last_reward: float | None, history: 
     lines.append(f"Step: {step}")
     if last_reward is not None:
         lines.append(f"Last step reward: {last_reward:.4f}")
-    
+
     if "last_action_result" in obs:
         lines.append(f"Last action result: {obs['last_action_result']}")
-        
+
     lines.append(f"Pending decisions: {obs.get('pending_decisions', [])}")
 
     apps = obs.get("applications", [])
@@ -182,15 +186,10 @@ def parse_action(raw: str) -> dict:
     """Parse LLM output to a JSON action dict. Falls back to request_info on failure."""
     start = raw.find("{")
     end = raw.rfind("}")
-    if start != -1 and end != -1:
-        text = raw[start:end+1]
-    else:
-        text = raw
-        
+    text = raw[start:end + 1] if start != -1 and end != -1 else raw
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # Safe fallback — logs a step without mutating meaningful state
         return {
             "action_type": "request_info",
             "candidate_id": "unknown",
@@ -199,11 +198,42 @@ def parse_action(raw: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Stdout helpers
+# Stdout emit — FLAT key=value format required by the evaluator
 # ---------------------------------------------------------------------------
 
-def emit(tag: str, payload: dict) -> None:
-    print(f"[{tag}] {json.dumps(payload)}", flush=True)
+def _action_repr(action: dict) -> str:
+    """
+    Render an action as  action_type(key=val, ...)  e.g.
+      decision(candidate_id=C001, decision=accept)
+      compose_email(candidate_id=C001, recipient=x@y.com)
+    """
+    atype = action.get("action_type", "unknown")
+    skip = {"action_type"}
+    pairs = ", ".join(
+        f"{k}={v}" for k, v in action.items() if k not in skip
+    )
+    return f"{atype}({pairs})"
+
+
+def emit_start(task: str) -> None:
+    print(f"[START] task={task} model={MODEL_NAME}", flush=True)
+
+
+def emit_step(step: int, action: dict, reward: float, done: bool, error: str | None = None) -> None:
+    error_val = "null" if error is None else error
+    done_val = str(done).lower()          # "true" / "false"
+    action_val = _action_repr(action)
+    print(
+        f"[STEP] step={step} action={action_val} reward={reward:.4f} done={done_val} error={error_val}",
+        flush=True,
+    )
+
+
+def emit_end(task: str, steps: int, final_reward: float, score: float, error: str | None = None) -> None:
+    line = f"[END] task={task} steps={steps} final_reward={final_reward:.4f} score={score:.4f}"
+    if error is not None:
+        line += f" error={error}"
+    print(line, flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +241,7 @@ def emit(tag: str, payload: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def run_task(task_name: str, deadline_ts: float) -> dict:
-    emit("START", {"task": task_name, "model": MODEL_NAME})
+    emit_start(task_name)
 
     obs = env_reset(task_name)
     step = 0
@@ -219,6 +249,7 @@ def run_task(task_name: str, deadline_ts: float) -> dict:
     cumulative_reward = 0.0
     obs_history: list[dict] = []
     final_reward = 0.0
+    last_action: dict = {}
 
     try:
         while True:
@@ -238,6 +269,7 @@ def run_task(task_name: str, deadline_ts: float) -> dict:
             raw = call_llm(messages)
             print(f"[DEBUG] raw={raw}", file=sys.stderr)
             action = parse_action(raw)
+            last_action = action
             print(f"[DEBUG] action={action}", file=sys.stderr)
 
             # Step environment
@@ -246,20 +278,19 @@ def run_task(task_name: str, deadline_ts: float) -> dict:
             step_reward = result.get("reward", 0.0)
             done = result.get("done", False)
             cumulative_reward += step_reward
-            final_reward = step_reward  # updated to final score below if done
 
-            # When done, get the final score from the breakdown
             if done:
                 breakdown = result.get("info", {}).get("final_reward_breakdown", {})
                 final_reward = breakdown.get("total", cumulative_reward)
+            else:
+                final_reward = cumulative_reward
 
-            emit("STEP", {
-                "task": task_name,
-                "step": step,
-                "action_type": action.get("action_type", "unknown"),
-                "reward": round(final_reward, 4) if done else round(step_reward, 4),
-                "done": done,
-            })
+            emit_step(
+                step=step,
+                action=action,
+                reward=final_reward if done else step_reward,
+                done=done,
+            )
 
             # Slide observation window
             obs_history.append(obs)
@@ -272,22 +303,11 @@ def run_task(task_name: str, deadline_ts: float) -> dict:
 
     except Exception as exc:
         traceback.print_exc(file=sys.stderr)
-        # [END] must always be emitted
-        emit("END", {
-            "task": task_name,
-            "steps": step,
-            "final_reward": round(final_reward, 4),
-            "score": round(final_reward, 4),
-            "error": str(exc),
-        })
+        emit_step(step=step, action=last_action, reward=0.0, done=False, error=str(exc))
+        emit_end(task_name, steps=step, final_reward=final_reward, score=final_reward, error=str(exc))
         return {"task": task_name, "steps": step, "score": final_reward, "error": str(exc)}
 
-    emit("END", {
-        "task": task_name,
-        "steps": step,
-        "final_reward": round(final_reward, 4),
-        "score": round(final_reward, 4),
-    })
+    emit_end(task_name, steps=step, final_reward=final_reward, score=final_reward)
     return {"task": task_name, "steps": step, "score": final_reward}
 
 
@@ -295,13 +315,15 @@ def run_task(task_name: str, deadline_ts: float) -> dict:
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> None:
     if not HF_TOKEN and OPENAI_BASE_URL.startswith("https://"):
         print(
             "[WARN] HF_TOKEN is not set. Remote LLM calls will likely fail. "
             "Set HF_TOKEN in your environment.",
             file=sys.stderr,
         )
+    if LOCAL_IMAGE_NAME:
+        print(f"[INFO] LOCAL_IMAGE_NAME={LOCAL_IMAGE_NAME}", file=sys.stderr)
 
     results = []
     start_ts = time.time()
@@ -312,9 +334,9 @@ def main():
         results.append(result)
         if time.time() >= deadline_ts:
             break
-        time.sleep(1)  # brief pause between tasks
+        time.sleep(1)   # brief pause between tasks
 
-    # Summary to stderr (not stdout, so it doesn't interfere with log parsing)
+    # Summary to stderr only — never pollute the evaluator's stdout stream
     print("\n=== Summary ===", file=sys.stderr)
     for r in results:
         score = r.get("score", 0.0)
