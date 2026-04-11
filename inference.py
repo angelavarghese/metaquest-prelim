@@ -33,12 +33,12 @@ load_dotenv()
 # Config
 # ---------------------------------------------------------------------------
 
-API_BASE_URL: str = os.environ.get("API_BASE_URL", "https://Navyasri12355-job-application-env.hf.space")
+OPENAI_BASE_URL: str = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+ENV_BASE_URL: str = os.environ.get("ENV_BASE_URL","https://Navyasri12355-job-application-env.hf.space")
 MODEL_NAME: str = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN: str | None = os.environ.get("HF_TOKEN")          # intentionally no default
 LOCAL_IMAGE_NAME: str | None = os.environ.get("LOCAL_IMAGE_NAME")  # logging only
 
-OPENAI_BASE_URL: str = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 REQUEST_TIMEOUT_SEC: int = int(os.environ.get("REQUEST_TIMEOUT_SEC", "25"))
 LLM_TIMEOUT_SEC: int = int(os.environ.get("LLM_TIMEOUT_SEC", "40"))
 # Hard stop below 20 minutes to satisfy submission runtime constraints.
@@ -103,7 +103,7 @@ Correct decisions (60%) + quality emails (25%) + all emails delivered (10%) + ef
 def env_reset(task: str) -> dict:
     try:
         r = requests.post(
-            f"{API_BASE_URL}/reset",
+            f"{ENV_BASE_URL}/reset",
             json={"task": task},
             timeout=REQUEST_TIMEOUT_SEC,
         )
@@ -116,7 +116,7 @@ def env_reset(task: str) -> dict:
 def env_step(action: dict) -> dict:
     try:
         r = requests.post(
-            f"{API_BASE_URL}/step",
+            f"{ENV_BASE_URL}/step",
             json=action,
             timeout=REQUEST_TIMEOUT_SEC,
         )
@@ -127,7 +127,7 @@ def env_step(action: dict) -> dict:
 
 
 def env_state() -> dict:
-    r = requests.get(f"{API_BASE_URL}/state", timeout=REQUEST_TIMEOUT_SEC)
+    r = requests.get(f"{ENV_BASE_URL}/state", timeout=REQUEST_TIMEOUT_SEC)
     r.raise_for_status()
     return r.json()
 
