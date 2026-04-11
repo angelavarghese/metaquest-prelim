@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import traceback
+from typing import Any, cast
 
 import requests
 from openai import OpenAI
@@ -43,6 +44,7 @@ REQUEST_TIMEOUT_SEC: int = int(os.environ.get("REQUEST_TIMEOUT_SEC", "25"))
 LLM_TIMEOUT_SEC: int = int(os.environ.get("LLM_TIMEOUT_SEC", "40"))
 # Hard stop below 20 minutes to satisfy submission runtime constraints.
 MAX_TOTAL_RUNTIME_SEC: int = int(os.environ.get("MAX_TOTAL_RUNTIME_SEC", "1140"))
+SCORE_EPSILON = 1e-4
 
 TASKS = ["single_clear_decision", "batch_with_quota", "negotiation_and_edge_cases"]
 
@@ -173,15 +175,16 @@ def build_user_prompt(obs: dict, step: int, last_reward: float | None, history: 
     return "\n".join(lines)
 
 
-def call_llm(messages: list[dict]) -> str:
+def call_llm(messages: list[dict[str, str]]) -> str:
     response = client.chat.completions.create(
         model=MODEL_NAME,
-        messages=messages,
+        messages=cast(Any, messages),
         max_tokens=700,
         temperature=0.2,
         timeout=LLM_TIMEOUT_SEC,
     )
-    return response.choices[0].message.content.strip()
+    content = response.choices[0].message.content
+    return (content or "").strip()
 
 
 def parse_action(raw: str) -> dict:
@@ -236,6 +239,15 @@ def emit_end(task: str, steps: int, final_reward: float, score: float, error: st
     if error is not None:
         line += f" error={error}"
     print(line, flush=True)
+
+
+def normalize_submission_score(value: float) -> float:
+    """Project score to strict open interval (0,1) required by submission validator."""
+    if value <= 0.0:
+        return SCORE_EPSILON
+    if value >= 1.0:
+        return 1.0 - SCORE_EPSILON
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -306,11 +318,19 @@ def run_task(task_name: str, deadline_ts: float) -> dict:
     except Exception as exc:
         traceback.print_exc(file=sys.stderr)
         emit_step(step=step, action=last_action, reward=0.0, done=False, error=str(exc))
-        emit_end(task_name, steps=step, final_reward=final_reward, score=final_reward, error=str(exc))
-        return {"task": task_name, "steps": step, "score": final_reward, "error": str(exc)}
+        submission_score = normalize_submission_score(final_reward)
+        emit_end(
+            task_name,
+            steps=step,
+            final_reward=final_reward,
+            score=submission_score,
+            error=str(exc),
+        )
+        return {"task": task_name, "steps": step, "score": submission_score, "error": str(exc)}
 
-    emit_end(task_name, steps=step, final_reward=final_reward, score=final_reward)
-    return {"task": task_name, "steps": step, "score": final_reward}
+    submission_score = normalize_submission_score(final_reward)
+    emit_end(task_name, steps=step, final_reward=final_reward, score=submission_score)
+    return {"task": task_name, "steps": step, "score": submission_score}
 
 
 # ---------------------------------------------------------------------------
