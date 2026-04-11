@@ -1,7 +1,7 @@
 {
   "task_name": "batch_with_quota",
   "difficulty": "medium",
-  "role_description": "Mid-level Backend Engineer at Nexus Tech. Required: 3+ years experience, proficiency in Go or Rust, must hold a current cloud certification (AWS, GCP, or Azure). Only 2 open seats. Salary band: $110,000–$140,000. Candidates should be ranked and personalised rejection reasons provided to all rejected applicants.",
+  "role_description": "Mid-level Backend Engineer at Nexus Tech. Required: 3+ years experience, proficiency in Go or Rust, must hold a current cloud certification (AWS, GCP, or Azure). Only 2 open seats. Salary band: $110,000–$140,000. Select the 2 best candidates and reject all others with personalised reasons.",
   "max_steps": 24,
   "salary_band": { "min": 110000, "max": 140000 },
   "expected_min_score": 0.55,
@@ -111,8 +111,8 @@
     "C003": "reject",
     "C004": "accept",
     "C005": "reject",
-    "C006": "shortlist",
-    "C007": "shortlist",
+    "C006": "reject",
+    "C007": "reject",
     "C008": "reject"
   },
 
@@ -133,8 +133,8 @@
     "C003": ["name", "role", "reject_language", "personalised_reason"],
     "C004": ["name", "role", "accept_language", "next_steps"],
     "C005": ["name", "role", "reject_language", "personalised_reason"],
-    "C006": ["name", "role", "shortlist_language"],
-    "C007": ["name", "role", "shortlist_language"],
+    "C006": ["name", "role", "reject_language", "personalised_reason"],
+    "C007": ["name", "role", "reject_language", "personalised_reason"],
     "C008": ["name", "role", "reject_language", "personalised_reason"]
   },
 
