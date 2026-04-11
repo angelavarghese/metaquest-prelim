@@ -15,6 +15,9 @@ from server.models import (
 )
 
 
+SCORE_EPSILON = 1e-4
+
+
 # ---------------------------------------------------------------------------
 # Email field checkers
 # ---------------------------------------------------------------------------
@@ -249,7 +252,7 @@ def grade_episode(episode_state: EpisodeState, task_config: TaskConfig) -> Rewar
         + rubric.delivery_weight * delivery_score
         - rubric.efficiency_weight * efficiency_penalty
     )
-    total = round(max(0.0, min(1.0, total)), 4)
+    total = round(max(SCORE_EPSILON, min(1.0 - SCORE_EPSILON, total)), 4)
 
     return RewardBreakdown(
         decision_score=round(decision_score, 4),
