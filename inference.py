@@ -33,7 +33,7 @@ load_dotenv()
 # Config
 # ---------------------------------------------------------------------------
 
-API_BASE_URL: str = os.environ.get("API_BASE_URL", "http://localhost:8000")
+API_BASE_URL: str = os.environ.get("API_BASE_URL", "https://Navyasri12355-job-application-env.hf.space")
 MODEL_NAME: str = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN: str | None = os.environ.get("HF_TOKEN")          # intentionally no default
 LOCAL_IMAGE_NAME: str | None = os.environ.get("LOCAL_IMAGE_NAME")  # logging only
@@ -101,19 +101,29 @@ Correct decisions (60%) + quality emails (25%) + all emails delivered (10%) + ef
 # ---------------------------------------------------------------------------
 
 def env_reset(task: str) -> dict:
-    r = requests.post(
-        f"{API_BASE_URL}/reset",
-        json={"task": task},
-        timeout=REQUEST_TIMEOUT_SEC,
-    )
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = requests.post(
+            f"{API_BASE_URL}/reset",
+            json={"task": task},
+            timeout=REQUEST_TIMEOUT_SEC,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as exc:
+        raise RuntimeError(f"env_reset failed for task={task}: {exc}") from exc
 
 
 def env_step(action: dict) -> dict:
-    r = requests.post(f"{API_BASE_URL}/step", json=action, timeout=REQUEST_TIMEOUT_SEC)
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = requests.post(
+            f"{API_BASE_URL}/step",
+            json=action,
+            timeout=REQUEST_TIMEOUT_SEC,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as exc:
+        raise RuntimeError(f"env_step failed: {exc}") from exc
 
 
 def env_state() -> dict:
