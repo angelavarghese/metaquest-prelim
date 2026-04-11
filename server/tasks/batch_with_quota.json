@@ -122,8 +122,8 @@
     "C003": "Missing required cloud certification — hard disqualifier.",
     "C004": "Meets all criteria, in-band salary, diverse Rust+Go background.",
     "C005": "Only 2 years experience (requires 3); foundational cert not sufficient.",
-    "C006": "Strong but only 2 seats filled. Shortlist as backup.",
-    "C007": "Strong candidate; shortlist as second backup.",
+    "C006": "Strong but only 2 seats filled. Rejecting in favor of stronger candidates.",
+    "C007": "Strong candidate. Rejecting in favor of stronger candidates and limited seats.",
     "C008": "1 year experience, no cert — clear reject."
   },
 
