@@ -235,6 +235,8 @@ def emit_step(step: int, action: dict, reward: float, done: bool, error: str | N
 
 
 def emit_end(task: str, steps: int, final_reward: float, score: float, error: str | None = None) -> None:
+    score = round(max(1e-4, min(1.0 - 1e-4, score)), 4)
+    final_reward = round(max(1e-4, min(1.0 - 1e-4, final_reward)), 4)
     line = f"[END] task={task} steps={steps} final_reward={final_reward:.4f} score={score:.4f}"
     if error is not None:
         line += f" error={error}"
@@ -247,7 +249,7 @@ def normalize_submission_score(value: float) -> float:
         return SCORE_EPSILON
     if value >= 1.0:
         return 1.0 - SCORE_EPSILON
-    return value
+    return round(value, 4)
 
 
 # ---------------------------------------------------------------------------
